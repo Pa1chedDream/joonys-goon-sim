@@ -26,6 +26,7 @@ import {
   Play
 } from "lucide-react";
 import { Artwork, AnalysisEvaluation, LeaderboardEntry } from "./types";
+import { artworks as initialArtworksData } from "./data/images";
 const joonyAvatar = "https://i.imgur.com/RW5sg2R_d.webp?maxwidth=760&fidelity=grand";
 
 // Dynamic pre-populated mock chat messages for a true German Twitch Chat experience
@@ -38,7 +39,7 @@ const streamChatsInitial = [
 ];
 
 export default function App() {
-  const [artworks, setArtworks] = useState<Artwork[]>([]);
+  const [artworks, setArtworks] = useState<Artwork[]>(initialArtworksData);
   const [gameState, setGameState] = useState<"start" | "game">("start");
   const [selectedArtwork, setSelectedArtwork] = useState<Artwork | null>(null);
   const [activeTab, setActiveTab] = useState<"game" | "leaderboard" | "info">("game");
@@ -73,6 +74,7 @@ export default function App() {
 
   // Fetch initial artworks and leaderboard
   useEffect(() => {
+    // Local data is already set via initial state
     fetchArtworks();
     fetchLeaderboard();
     if (typeof window !== "undefined") {
@@ -134,20 +136,28 @@ export default function App() {
   const fetchArtworks = async () => {
     try {
       const res = await fetch("/api/artworks");
-      const data = await res.json();
-      setArtworks(data);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          setArtworks(data);
+        }
+      } else {
+        console.warn("API returned non-OK status, keeping local data.");
+      }
     } catch (e) {
-      console.error("Artworks fetch failed", e);
+      console.error("Artworks fetch failed, keeping local data:", e);
     }
   };
 
   const fetchLeaderboard = async () => {
     try {
       const res = await fetch("/api/leaderboard");
-      const data = await res.json();
-      setLeaderboard(data);
+      if (res.ok) {
+        const data = await res.json();
+        setLeaderboard(data);
+      }
     } catch (e) {
-      console.error("Leaderboard fetch failed", e);
+      console.error("Leaderboard fetch failed:", e);
     }
   };
 
@@ -316,22 +326,16 @@ export default function App() {
           <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-rose-600/10 rounded-full blur-[120px] animate-pulse delay-700"></div>
 
           <div className="z-10 text-center space-y-12 max-w-2xl px-6">
-            <div className="space-y-4">
-              <div className="inline-flex items-center space-x-2 bg-zinc-900/80 border border-zinc-800 px-4 py-2 rounded-2xl shadow-xl">
-                <Gamepad2 className="h-5 w-5 text-purple-400" />
-                <span className="text-xs font-bold tracking-[0.2em] text-zinc-400 uppercase">Interactive Arcade Experience</span>
-              </div>
-              <h1 className="text-6xl md:text-8xl font-black tracking-tighter text-white">
-                <span className="block italic text-zinc-500 text-2xl md:text-3xl font-medium tracking-normal mb-[-10px]">Hr.</span>
-                <span className="bg-gradient-to-br from-white via-zinc-400 to-zinc-600 bg-clip-text text-transparent">JOONY</span>
-                <span className="block text-4xl md:text-5xl bg-gradient-to-r from-purple-400 to-rose-400 bg-clip-text text-transparent mt-2">SIMULATOR</span>
-              </h1>
-            </div>
-
-            <div className="flex flex-col items-center space-y-6">
+            <div className="flex flex-col items-center space-y-8">
                <button 
-                onClick={() => setGameState('game')}
-                className="group relative inline-flex items-center justify-center px-12 py-6 font-bold text-white transition-all duration-300 bg-gradient-to-r from-purple-600 to-rose-600 rounded-3xl hover:from-purple-500 hover:to-rose-500 shadow-[0_0_40px_-5px_rgba(147,51,234,0.3)] hover:shadow-[0_0_60px_-5px_rgba(147,51,234,0.5)] transform hover:scale-105 active:scale-95"
+                onClick={() => {
+                  setGameState('game');
+                  setTimeout(() => {
+                    // Start spinning automatically after transition for that "Game Start" feel
+                    triggerSlotMachine();
+                  }, 500);
+                }}
+                className="group relative inline-flex items-center justify-center px-12 py-6 font-bold text-white transition-all duration-300 bg-gradient-to-r from-purple-600 to-rose-600 rounded-3xl shadow-[0_0_40px_-5px_rgba(147,51,234,0.3)] hover:shadow-[0_0_60px_-5px_rgba(147,51,234,0.5)] transform hover:scale-105 active:scale-95"
                 id="btn_start_game"
               >
                 <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500 to-rose-500 rounded-3xl blur opacity-30 group-hover:opacity-60 transition duration-1000 group-hover:duration-200"></div>
@@ -340,6 +344,18 @@ export default function App() {
                   <span className="text-xl tracking-tight uppercase">Singleplayer</span>
                 </div>
               </button>
+
+              <div className="space-y-4">
+                <div className="inline-flex items-center space-x-2 bg-zinc-900/80 border border-zinc-800 px-4 py-2 rounded-2xl">
+                  <Gamepad2 className="h-5 w-5 text-purple-400" />
+                  <span className="text-xs font-bold tracking-[0.2em] text-zinc-400 uppercase">Interactive Arcade Experience</span>
+                </div>
+                <h1 className="text-6xl md:text-8xl font-black tracking-tighter text-white">
+                  <span className="block italic text-zinc-500 text-2xl md:text-3xl font-medium tracking-normal mb-[-10px]">Hr.</span>
+                  <span className="bg-gradient-to-br from-white via-zinc-400 to-zinc-600 bg-clip-text text-transparent">JOONY</span>
+                  <span className="block text-4xl md:text-5xl bg-gradient-to-r from-purple-400 to-rose-400 bg-clip-text text-transparent mt-2">SIMULATOR</span>
+                </h1>
+              </div>
 
               <p className="text-zinc-500 text-xs font-medium max-w-xs mx-auto leading-relaxed">
                 Tauche ein in das Universum von Lehrer Joony. Analysiere Kunst, sammle Punkte und werde zum ultimativen Macher.
@@ -609,7 +625,7 @@ export default function App() {
                             onClick={triggerSlotMachine}
                             className="w-full bg-gradient-to-r from-purple-600 via-pink-600 to-yellow-500 hover:from-purple-500 hover:via-pink-500 hover:to-yellow-400 text-white font-extrabold py-3.5 px-6 rounded-xl text-xs flex items-center justify-center space-x-2 transition-all shadow-lg shadow-purple-950/40 active:scale-[0.98] hover:scale-[1.01]"
                           >
-                            <span>🎰 {slotWinnerArt ? "Nochmal rollen (Reroll)" : "Jetzt drehen (Roll)"}</span>
+                            <span>🎰 {slotWinnerArt ? "Nochmal rollen (Reroll)" : "Jetzt rollen (Spin)"}</span>
                           </button>
 
                           {slotWinnerArt && (
@@ -666,14 +682,14 @@ export default function App() {
                         {artworks.map((art) => (
                           <div 
                             key={art.id} 
-                            className="bg-zinc-950/60 border border-zinc-800/80 rounded-xl p-3 flex items-center space-x-3 relative opacity-85 hover:opacity-100 transition-all"
+                            className="group bg-zinc-950/60 border border-zinc-800/80 rounded-xl p-3 flex items-center space-x-3 relative opacity-85 hover:opacity-100 transition-all"
                           >
                             <div className="h-16 w-16 rounded-lg overflow-hidden bg-zinc-900 shrink-0 border border-zinc-800 relative">
                               <img 
                                 src={art.imageUrl} 
                                 alt={art.title} 
                                 referrerPolicy="no-referrer"
-                                className="w-full h-full object-cover grayscale opacity-50"
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                               />
                               <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                                 <Lock className="h-4 w-4 text-zinc-400" />
