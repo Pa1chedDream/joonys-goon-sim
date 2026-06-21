@@ -243,11 +243,69 @@ export default function App() {
       fetchLeaderboard();
 
     } catch (e) {
-      console.error(e);
-      triggerNotification("❌ Server-Fehler beim Graden. Probiere es noch einmal!");
+      console.error("Grading failed, using offline fallback:", e);
+      // Client-side fallback if server is down (e.g. on Vercel without backend)
+      const mockResult = generateLocalEvaluation(selectedArtwork, analysisText);
+      setEvaluation(mockResult);
+      triggerNotification("⚠️ Joony ist gerade im Funkloch! Er bewertet dich lokal.");
+      
+      setTimeout(() => {
+        setStreamChats(prev => [
+          { id: Date.now(), user: "JoonyMod", text: `WILDER GRIND! Du hast eine ${mockResult.grade} bekommen (Offline-Modus)!`, badge: "mod" },
+          ...prev
+        ]);
+      }, 1000);
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Shared evaluation logic for offline fallback
+  const generateLocalEvaluation = (artwork: Artwork, userText: string): AnalysisEvaluation => {
+    const textWords = userText.trim().split(/\s+/).filter(Boolean).length;
+    let score = Math.min(25 + textWords * 0.35, 75); // Base line
+    
+    // Scan for subject keywords
+    const lowerText = userText.toLowerCase();
+    let hits = 0;
+    const combinedKeywords = [...artwork.gradingPrompts.excellentPoints, ...artwork.gradingPrompts.goodPoints];
+    combinedKeywords.forEach(kw => {
+      const coreWords = kw.split(" ").filter(w => w.length > 5);
+      coreWords.forEach(cw => {
+        if (lowerText.includes(cw.toLowerCase())) hits++;
+      });
+    });
+
+    score = Math.min(100, score + hits * 5);
+    
+    let grade = "6";
+    if (score >= 95) grade = "1+";
+    else if (score >= 90) grade = "1";
+    else if (score >= 85) grade = "1-";
+    else if (score >= 80) grade = "2+";
+    else if (score >= 75) grade = "2";
+    else if (score >= 70) grade = "2-";
+    else if (score >= 65) grade = "3+";
+    else if (score >= 60) grade = "3";
+    else if (score >= 55) grade = "3-";
+    else if (score >= 50) grade = "4+";
+    else if (score >= 45) grade = "4";
+    else if (score >= 40) grade = "4-";
+    else if (score >= 30) grade = "5";
+
+    const isPositive = score >= 75;
+
+    return {
+      score: Math.floor(score),
+      grade,
+      funnyTeacherComment: isPositive 
+        ? `Macher! Absolute Macher-Analyse zu "${artwork.title}", Brudi! Du hast die Vibes komplett gefühlt!` 
+        : `Oha, Digga... "${artwork.title}" ist eigentlich dein Thema, aber da fehlt noch der Grind. Setzen, Sechs!`,
+      academicFeedback: "Offline-Bewertung: Deine Analyse wurde lokal ausgewertet. Sie zeigt gute Ansätze in der Beschreibung, könnte aber in der historischen Einordnung noch fundierter sein.",
+      historicalAccuracies: ["Zentrale Bildmotive erkannt", "Thematische Einordnung vorhanden"],
+      missedPoints: ["Detaillierte Analyse der Stilmittel", "Deeper historischer Kontext"],
+      subScores: { inhaltlich: 25, stilMittel: 25, historischerBezug: 25 }
+    };
   };
 
   const triggerNotification = (msg: string) => {
@@ -561,7 +619,7 @@ export default function App() {
                               src={slotCurrentArt.imageUrl} 
                               alt={slotCurrentArt.title} 
                               referrerPolicy="no-referrer"
-                              className="w-full h-full object-cover opacity-80"
+                              className="w-full h-full object-cover"
                             />
                             {/* Shadow barrier */}
                             <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-transparent"></div>
@@ -625,7 +683,7 @@ export default function App() {
                             onClick={triggerSlotMachine}
                             className="w-full bg-gradient-to-r from-purple-600 via-pink-600 to-yellow-500 hover:from-purple-500 hover:via-pink-500 hover:to-yellow-400 text-white font-extrabold py-3.5 px-6 rounded-xl text-xs flex items-center justify-center space-x-2 transition-all shadow-lg shadow-purple-950/40 active:scale-[0.98] hover:scale-[1.01]"
                           >
-                            <span>🎰 {slotWinnerArt ? "Nochmal rollen (Reroll)" : "Jetzt rollen (Spin)"}</span>
+                            <span>🎰 {slotWinnerArt ? "NOCHMAL ROLLEN" : "JETZT ROLLEN"}</span>
                           </button>
 
                           {slotWinnerArt && (
@@ -682,18 +740,15 @@ export default function App() {
                         {artworks.map((art) => (
                           <div 
                             key={art.id} 
-                            className="group bg-zinc-950/60 border border-zinc-800/80 rounded-xl p-3 flex items-center space-x-3 relative opacity-85 hover:opacity-100 transition-all"
+                            className="group bg-zinc-950/60 border border-zinc-800/80 rounded-xl p-3 flex items-center space-x-3 relative transition-all"
                           >
                             <div className="h-16 w-16 rounded-lg overflow-hidden bg-zinc-900 shrink-0 border border-zinc-800 relative">
                               <img 
                                 src={art.imageUrl} 
                                 alt={art.title} 
                                 referrerPolicy="no-referrer"
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                               />
-                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                                <Lock className="h-4 w-4 text-zinc-400" />
-                              </div>
                             </div>
                             <div className="space-y-0.5 min-w-0 flex-1">
                               <span className={`text-[8px] uppercase tracking-wider font-extrabold px-1.5 py-0.5 rounded border inline-block ${
