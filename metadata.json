@@ -1,0 +1,6 @@
+{
+  "name": "Hr. Joony Simulator",
+  "description": "Beweise deine Fähigkeiten in Geschichte und Deutsch! Analysiere klassische Gemälde, Karikaturen und expressionistische Werke, und lass sie von Lehrer Joony bewerten.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
